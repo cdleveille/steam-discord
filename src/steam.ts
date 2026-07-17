@@ -157,20 +157,20 @@ export async function findSteamIconUrl(appId: string): Promise<string | null> {
     return null;
   }
 
-  // 1. Prefer the 600×900 portrait capsule — the full library artwork Steam caches locally.
+  // 1. Small square community icon — fits Discord's square large_image best.
+  const iconFile = entries.find(e => /^[0-9a-f]{40}\.jpg$/.test(e));
+  if (iconFile) {
+    return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${iconFile.slice(0, -4)}.jpg`;
+  }
+
+  // 2. 600×900 portrait capsule — full library artwork Steam caches locally.
   if (entries.includes("library_600x900.jpg")) {
     return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`;
   }
 
-  // 2. Fall back to the 616×353 landscape capsule from the store CDN.
+  // 3. 616×353 landscape capsule from the store CDN.
   if (entries.length > 0) {
     return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/capsule_616x353.jpg`;
-  }
-
-  // 3. Last resort: small community icon hash file.
-  const iconFile = entries.find(e => /^[0-9a-f]{40}\.jpg$/.test(e));
-  if (iconFile) {
-    return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${iconFile.slice(0, -4)}.jpg`;
   }
 
   return null;
