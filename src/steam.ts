@@ -157,17 +157,20 @@ export async function findSteamIconUrl(appId: string): Promise<string | null> {
     return null;
   }
 
-  // Prefer the 600×900 portrait capsule art Steam caches for the new library UI.
-  // This is the full-quality artwork shown in the Steam library grid view.
+  // 1. Prefer the 600×900 portrait capsule — the full library artwork Steam caches locally.
   if (entries.includes("library_600x900.jpg")) {
     return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`;
   }
 
-  // Fall back to the small community icon (the 40-char-hash .jpg files).
+  // 2. Fall back to the 616×353 landscape capsule from the store CDN.
+  if (entries.length > 0) {
+    return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/capsule_616x353.jpg`;
+  }
+
+  // 3. Last resort: small community icon hash file.
   const iconFile = entries.find(e => /^[0-9a-f]{40}\.jpg$/.test(e));
   if (iconFile) {
-    const hash = iconFile.slice(0, -4);
-    return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${hash}.jpg`;
+    return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${iconFile.slice(0, -4)}.jpg`;
   }
 
   return null;
@@ -229,15 +232,19 @@ async function loadDetectableMap(): Promise<Map<string, DetectableGameInfo>> {
       const list = (await resp.json()) as Array<{
         id: string;
         name: string;
-        icon?: string | null;
+        icon_hash?: string | null;
+        cover_image_hash?: string | null;
         aliases?: string[];
       }>;
       detectableNameMap = new Map();
       for (const g of list) {
+        // Prefer cover_image_hash (the game directory artwork, ~512px square)
+        // over icon_hash (the small app icon, typically 32–64px).
+        const imageHash = g.cover_image_hash ?? g.icon_hash ?? null;
         const info: DetectableGameInfo = {
           appId: g.id,
-          iconUrl: g.icon
-            ? `https://cdn.discordapp.com/app-icons/${g.id}/${g.icon}.png?size=512`
+          iconUrl: imageHash
+            ? `https://cdn.discordapp.com/app-icons/${g.id}/${imageHash}.png?size=512`
             : null,
         };
         detectableNameMap.set(g.name.toLowerCase(), info);
