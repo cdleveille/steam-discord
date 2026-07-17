@@ -1,0 +1,21 @@
+{
+  "name": "bun-init",
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "prepare": "lefthook install",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "tsc": "tsc -p tsconfig.json",
+    "dev": "bun --hot src/index.ts",
+    "compile": "bun build --compile --minify --bytecode --target bun --outfile dist/app src/index.ts",
+    "start": "bun src/index.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.3",
+    "@evilmartians/lefthook": "^2.1.10",
+    "@types/bun": "latest",
+    "typescript": "^7.0.2"
+  }
+}

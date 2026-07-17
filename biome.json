@@ -1,0 +1,46 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "defaultBranch": "main",
+    "useIgnoreFile": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": { "preset": "recommended" },
+    "includes": ["**", "!**/routeTree.gen.ts"]
+  },
+  "formatter": {
+    "enabled": true,
+    "attributePosition": "auto",
+    "bracketSpacing": true,
+    "formatWithErrors": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100,
+    "useEditorconfig": false,
+    "includes": ["**", "!**/routeTree.gen.ts"]
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "asNeeded",
+      "bracketSameLine": false,
+      "jsxQuoteStyle": "double",
+      "quoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    },
+    "includes": ["**", "!**/routeTree.gen.ts"]
+  },
+  "overrides": [{ "includes": ["**/*.cmd", "**/*.bat"], "formatter": { "lineEnding": "crlf" } }]
+}

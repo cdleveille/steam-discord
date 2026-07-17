@@ -1,0 +1,15 @@
+**/*.DS_Store
+**/*.env*
+**/.git
+**/.git[a-zA-Z0-9]*
+!**/.gitignore
+**/.tsbuildinfo
+**/.vscode
+**/dist
+**/node_modules
+.dockerignore
+Dockerfile
+fly.toml
+lefthook.yaml
+LICENSE
+README.md
