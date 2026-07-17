@@ -15,7 +15,7 @@ Icons are sourced directly from your Steam library cache (for Steam games) and y
 **1. Clone and install dependencies**
 
 ```sh
-git clone https://github.com/youruser/steam-discord
+git clone https://github.com/cdleveille/steam-discord
 cd steam-discord
 bun install
 ```
@@ -28,7 +28,7 @@ Under the application, create a **Bot** and copy its token.
 
 **3. Configure environment variables**
 
-Create a `.env` file in the project root:
+For development, create a `.env` file in the project root (Bun loads it automatically):
 
 ```sh
 DISCORD_APP_ID=your_application_id
@@ -38,7 +38,26 @@ DISCORD_BOT_TOKEN=your_bot_token
 STEAM_USER_ID=your_steamid64
 ```
 
+For the installed binary or systemd service, create a dedicated config file instead:
+
+```sh
+mkdir -p ~/.config/steam-discord
+chmod 700 ~/.config/steam-discord
+touch ~/.config/steam-discord/env
+chmod 600 ~/.config/steam-discord/env
+```
+
+Then populate `~/.config/steam-discord/env` (plain `KEY=VALUE` pairs, no `export`):
+
+```sh
+DISCORD_APP_ID=your_application_id
+DISCORD_BOT_TOKEN=your_bot_token
+STEAM_USER_ID=your_steamid64
+```
+
 `STEAM_USER_ID` is your 64-bit Steam ID (e.g. `76561198041506230`). It's used to locate your shortcuts and grid artwork. You can find it at [steamid.io](https://steamid.io).
+
+> **Security:** `chmod 600` ensures the file is readable only by your user. Never commit secrets to version control — `.env` is already listed in `.gitignore`.
 
 ## Running
 
@@ -84,6 +103,7 @@ Description=Steam Discord Rich Presence
 After=graphical-session.target
 
 [Service]
+EnvironmentFile=%h/.config/steam-discord/env
 ExecStart=%h/.local/bin/steam-discord
 Restart=on-failure
 RestartSec=10
@@ -92,11 +112,20 @@ RestartSec=10
 WantedBy=default.target
 ```
 
+`EnvironmentFile` points at the config file created in step 3, so secrets are never stored inside the unit file.
+
 Enable and start it:
 
 ```sh
 systemctl --user daemon-reload
 systemctl --user enable --now steam-discord
+```
+
+Check status or logs:
+
+```sh
+systemctl --user status steam-discord
+journalctl --user -u steam-discord -f
 ```
 
 ## How it works
