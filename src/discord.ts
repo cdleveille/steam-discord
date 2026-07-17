@@ -1,0 +1,145 @@
+import { existsSync } from "node:fs";
+import type { Socket } from "bun";
+import { Config } from "./config";
+
+const OP_HANDSHAKE = 0;
+const OP_FRAME = 1;
+const OP_PING = 3;
+const OP_PONG = 4;
+
+function ipcEncode(op: number, payload: object): Buffer {
+  const json = JSON.stringify(payload);
+  const buf = Buffer.allocUnsafe(8 + Buffer.byteLength(json));
+  buf.writeUInt32LE(op, 0);
+  buf.writeUInt32LE(Buffer.byteLength(json), 4);
+  buf.write(json, 8);
+  return buf;
+}
+
+function findIpcSocket(): string | null {
+  const dirs = [
+    process.env.XDG_RUNTIME_DIR,
+    `/run/user/${process.getuid?.() ?? 1000}`,
+    process.env.TMPDIR,
+    "/tmp",
+  ].filter(Boolean) as string[];
+  for (const dir of dirs) {
+    for (let i = 0; i < 10; i++) {
+      const p = `${dir}/discord-ipc-${i}`;
+      if (existsSync(p)) return p;
+    }
+  }
+  return null;
+}
+
+export class DiscordIpc {
+  private socket: Socket<undefined> | null = null;
+  private buf = Buffer.alloc(0);
+  private onReady: (() => void) | null = null;
+
+  async connect(): Promise<boolean> {
+    const path = findIpcSocket();
+    if (!path) return false;
+
+    const ready = new Promise<void>(r => {
+      this.onReady = r;
+    });
+    this.buf = Buffer.alloc(0);
+
+    try {
+      this.socket = await Bun.connect({
+        unix: path,
+        socket: {
+          open: sock => {
+            sock.write(ipcEncode(OP_HANDSHAKE, { v: 1, client_id: Config.DISCORD_APP_ID }));
+          },
+          data: (sock, data) => this.handleData(sock, data),
+          close: () => {
+            this.socket = null;
+          },
+          error: (_, e) => console.error(`[Discord IPC] ${e.message}`),
+        },
+      });
+    } catch {
+      return false;
+    }
+
+    try {
+      await Promise.race([
+        ready,
+        (async () => {
+          await Bun.sleep(5_000);
+          throw new Error("READY timeout");
+        })(),
+      ]);
+      return true;
+    } catch {
+      this.disconnect();
+      return false;
+    }
+  }
+
+  private handleData(sock: Socket<undefined>, data: Buffer): void {
+    this.buf = Buffer.concat([this.buf, data]);
+
+    while (this.buf.length >= 8) {
+      const op = this.buf.readUInt32LE(0);
+      const len = this.buf.readUInt32LE(4);
+      if (this.buf.length < 8 + len) break;
+
+      const json = this.buf.subarray(8, 8 + len).toString("utf8");
+      this.buf = Buffer.from(this.buf.subarray(8 + len));
+
+      if (op === OP_PING) {
+        sock.write(ipcEncode(OP_PONG, JSON.parse(json)));
+        continue;
+      }
+
+      if (op === OP_FRAME) {
+        const msg = JSON.parse(json) as { evt?: string };
+        if (msg.evt === "READY") {
+          this.onReady?.();
+          this.onReady = null;
+        }
+      }
+    }
+  }
+
+  private send(op: number, payload: object): void {
+    this.socket?.write(ipcEncode(op, payload));
+  }
+
+  setActivity(gameName: string, startTimestamp: number): void {
+    this.send(OP_FRAME, {
+      cmd: "SET_ACTIVITY",
+      args: {
+        pid: process.pid,
+        activity: {
+          name: gameName,
+          type: 0,
+          timestamps: { start: Math.floor(startTimestamp / 1000) },
+        },
+      },
+      nonce: crypto.randomUUID(),
+    });
+  }
+
+  clearActivity(): void {
+    this.send(OP_FRAME, {
+      cmd: "SET_ACTIVITY",
+      args: { pid: process.pid, activity: null },
+      nonce: crypto.randomUUID(),
+    });
+  }
+
+  disconnect(): void {
+    this.socket?.end();
+    this.socket = null;
+    this.buf = Buffer.alloc(0);
+    this.onReady = null;
+  }
+
+  get connected(): boolean {
+    return this.socket !== null;
+  }
+}
