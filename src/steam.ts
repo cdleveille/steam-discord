@@ -156,10 +156,21 @@ export async function findSteamIconUrl(appId: string): Promise<string | null> {
   } catch {
     return null;
   }
+
+  // Prefer the 600×900 portrait capsule art Steam caches for the new library UI.
+  // This is the full-quality artwork shown in the Steam library grid view.
+  if (entries.includes("library_600x900.jpg")) {
+    return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900.jpg`;
+  }
+
+  // Fall back to the small community icon (the 40-char-hash .jpg files).
   const iconFile = entries.find(e => /^[0-9a-f]{40}\.jpg$/.test(e));
-  if (!iconFile) return null;
-  const hash = iconFile.slice(0, -4);
-  return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${hash}.jpg`;
+  if (iconFile) {
+    const hash = iconFile.slice(0, -4);
+    return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${hash}.jpg`;
+  }
+
+  return null;
 }
 
 export function findShortcutIconPath(appId: string): string | null {
