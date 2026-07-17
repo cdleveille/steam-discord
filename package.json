@@ -9,7 +9,7 @@
     "check": "biome check .",
     "tsc": "tsc -p tsconfig.json",
     "dev": "bun --hot src/index.ts",
-    "compile": "bun build --compile --minify --bytecode --target bun --outfile dist/steam-discord src/index.ts",
+    "compile": "bun build --compile --minify --target bun --outfile dist/steam-discord src/index.ts",
     "start": "bun src/index.ts"
   },
   "devDependencies": {

@@ -8,7 +8,8 @@ if (!DISCORD_APP_ID) {
 
 export const Config = {
   POLL_MS: 5_000,
-  STEAM_ROOT: join(process.env.HOME!, ".local/share/Steam"),
+  STEAM_ROOT: join(process.env.HOME ?? "~/", ".local/share/Steam"),
   STEAM_USER_ID: process.env.STEAM_USER_ID,
   DISCORD_APP_ID,
+  DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
 };

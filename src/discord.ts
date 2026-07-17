@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import type { Socket } from "bun";
 import { Config } from "./config";
 
@@ -109,7 +110,7 @@ export class DiscordIpc {
     this.socket?.write(ipcEncode(op, payload));
   }
 
-  setActivity(gameName: string, startTimestamp: number): void {
+  setActivity(gameName: string, startTimestamp: number, largeImage?: string): void {
     this.send(OP_FRAME, {
       cmd: "SET_ACTIVITY",
       args: {
@@ -118,6 +119,7 @@ export class DiscordIpc {
           name: gameName,
           type: 0,
           timestamps: { start: Math.floor(startTimestamp / 1000) },
+          ...(largeImage ? { assets: { large_image: largeImage, large_text: gameName } } : {}),
         },
       },
       nonce: crypto.randomUUID(),
@@ -142,4 +144,44 @@ export class DiscordIpc {
   get connected(): boolean {
     return this.socket !== null;
   }
+}
+
+export async function uploadApplicationAsset(
+  appId: string,
+  filePath: string,
+): Promise<string | null> {
+  if (!Config.DISCORD_BOT_TOKEN) return null;
+
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "png";
+  if (ext === "ico") return null;
+
+  let imageBuffer: Buffer;
+  try {
+    imageBuffer = await readFile(filePath);
+  } catch {
+    return null;
+  }
+
+  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+  const dataUrl = `data:${mime};base64,${imageBuffer.toString("base64")}`;
+  // Emoji names: alphanumeric + underscores, 2-32 chars
+  const emojiName = `app${appId}`;
+
+  const resp = await fetch(
+    `https://discord.com/api/v10/applications/${Config.DISCORD_APP_ID}/emojis`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${Config.DISCORD_BOT_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: emojiName, image: dataUrl }),
+    },
+  );
+  if (!resp.ok) {
+    console.warn(`[Discord] Emoji upload failed (${resp.status}): ${await resp.text()}`);
+    return null;
+  }
+  const data = (await resp.json()) as { id: string };
+  return `https://cdn.discordapp.com/emojis/${data.id}.png`;
 }

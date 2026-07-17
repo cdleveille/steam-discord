@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Config } from "./config";
@@ -120,7 +121,7 @@ export async function loadShortcuts(): Promise<Map<string, string>> {
 export async function getRunningGame(
   appIdMap: Map<string, string>,
   shortcuts: Map<string, string>,
-): Promise<string | null> {
+): Promise<{ name: string; appId: string } | null> {
   let pids: string[];
   try {
     pids = await readdir("/proc");
@@ -137,11 +138,37 @@ export async function getRunningGame(
       if (!entry) continue;
       const appId = entry.slice("SteamAppId=".length);
       if (appId && appId !== "0") {
-        return appIdMap.get(appId) ?? shortcuts.get(appId) ?? `Unknown game (appid ${appId})`;
+        const name = appIdMap.get(appId) ?? shortcuts.get(appId) ?? `Unknown game (appid ${appId})`;
+        return { name, appId };
       }
     } catch {
       // process exited or not readable
     }
+  }
+  return null;
+}
+
+export async function findSteamIconUrl(appId: string): Promise<string | null> {
+  const dir = join(Config.STEAM_ROOT, `appcache/librarycache/${appId}`);
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return null;
+  }
+  const iconFile = entries.find(e => /^[0-9a-f]{40}\.jpg$/.test(e));
+  if (!iconFile) return null;
+  const hash = iconFile.slice(0, -4);
+  return `https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/${appId}/${hash}.jpg`;
+}
+
+export function findShortcutIconPath(appId: string): string | null {
+  if (!Config.STEAM_USER_ID) return null;
+  const accountId = Number(BigInt(Config.STEAM_USER_ID) & 0xffffffffn);
+  const base = join(Config.STEAM_ROOT, `userdata/${accountId}/config/grid`);
+  for (const ext of ["png", "jpg", "ico"]) {
+    const p = join(base, `${appId}_icon.${ext}`);
+    if (existsSync(p)) return p;
   }
   return null;
 }

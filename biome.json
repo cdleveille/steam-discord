@@ -8,7 +8,7 @@
   },
   "linter": {
     "enabled": true,
-    "rules": { "preset": "recommended" },
+    "rules": { "preset": "recommended", "style": { "noNonNullAssertion": "off" } },
     "includes": ["**", "!**/routeTree.gen.ts"]
   },
   "formatter": {
