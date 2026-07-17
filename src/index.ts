@@ -4,6 +4,7 @@ import { Config } from "./config";
 import { DiscordIpc, uploadApplicationAsset } from "./discord";
 import {
   buildAppIdMap,
+  findDiscordGame,
   findShortcutIconPath,
   findSteamIconUrl,
   getLibraryPaths,
@@ -37,7 +38,14 @@ async function saveAssetCache(): Promise<void> {
   } catch {}
 }
 
-async function resolveGameImage(appId: string, isShortcut: boolean): Promise<string | undefined> {
+async function resolveGameImage(
+  appId: string,
+  isShortcut: boolean,
+  discordIconUrl?: string,
+): Promise<string | undefined> {
+  // Discord's official icon takes priority for regular Steam games.
+  if (!isShortcut && discordIconUrl) return discordIconUrl;
+
   if (assetCache.has(appId)) return assetCache.get(appId);
 
   if (!isShortcut) {
@@ -72,15 +80,30 @@ let polling = false;
 async function handleGameChange(game: { name: string; appId: string } | null): Promise<void> {
   if (game) {
     console.log(`[${new Date().toISOString()}] Now playing: ${game.name}`);
+    // Use the game's own Discord application ID if it's in the detectable-games
+    // registry — this is what makes the correct icon appear in the voice channel.
+    // Fall back to the configured custom app ID for unrecognised games.
+    const discordGame = await findDiscordGame(game.name);
+    const discordAppId = discordGame?.appId ?? Config.DISCORD_APP_ID;
+
+    // Reconnect if we're already connected under a different application ID.
+    if (ipc.connected && ipc.appId !== discordAppId) {
+      ipc.disconnect();
+    }
+
     if (!ipc.connected) {
-      const ok = await ipc.connect();
+      const ok = await ipc.connect(discordAppId);
       if (!ok) {
         console.warn("[Discord] IPC connection failed — is Discord running?");
         return;
       }
     }
     const isShortcut = shortcuts.has(game.appId);
-    const largeImage = await resolveGameImage(game.appId, isShortcut);
+    const largeImage = await resolveGameImage(
+      game.appId,
+      isShortcut,
+      discordGame?.iconUrl ?? undefined,
+    );
     gameStartTime = Date.now();
     ipc.setActivity(game.name, gameStartTime, largeImage);
   } else {

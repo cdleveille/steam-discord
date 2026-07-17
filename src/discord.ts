@@ -37,8 +37,9 @@ export class DiscordIpc {
   private socket: Socket<undefined> | null = null;
   private buf = Buffer.alloc(0);
   private onReady: (() => void) | null = null;
+  private _appId: string | null = null;
 
-  async connect(): Promise<boolean> {
+  async connect(appId = Config.DISCORD_APP_ID): Promise<boolean> {
     const path = findIpcSocket();
     if (!path) return false;
 
@@ -46,13 +47,14 @@ export class DiscordIpc {
       this.onReady = r;
     });
     this.buf = Buffer.alloc(0);
+    this._appId = appId;
 
     try {
       this.socket = await Bun.connect({
         unix: path,
         socket: {
           open: sock => {
-            sock.write(ipcEncode(OP_HANDSHAKE, { v: 1, client_id: Config.DISCORD_APP_ID }));
+            sock.write(ipcEncode(OP_HANDSHAKE, { v: 1, client_id: appId }));
           },
           data: (sock, data) => this.handleData(sock, data),
           close: () => {
@@ -139,10 +141,15 @@ export class DiscordIpc {
     this.socket = null;
     this.buf = Buffer.alloc(0);
     this.onReady = null;
+    this._appId = null;
   }
 
   get connected(): boolean {
     return this.socket !== null;
+  }
+
+  get appId(): string | null {
+    return this._appId;
   }
 }
 

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Config } from "./config";
 
@@ -171,4 +171,95 @@ export function findShortcutIconPath(appId: string): string | null {
     if (existsSync(p)) return p;
   }
   return null;
+}
+
+// ── Discord detectable games ──────────────────────────────────────────────────
+// Maps lowercase game name / alias → { appId, iconUrl }.
+// appId: used as IPC client_id so Discord shows the correct voice-channel icon.
+// iconUrl: Discord's official CDN icon for use as large_image in rich presence.
+
+export interface DetectableGameInfo {
+  appId: string;
+  iconUrl: string | null;
+}
+
+const DETECTABLE_CACHE_PATH = join(
+  process.env.HOME!,
+  ".local/share/steam-discord/detectable-cache.json",
+);
+const DETECTABLE_CACHE_VERSION = 2;
+const DETECTABLE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+
+let detectableNameMap: Map<string, DetectableGameInfo> | null = null;
+
+async function loadDetectableMap(): Promise<Map<string, DetectableGameInfo>> {
+  if (detectableNameMap) return detectableNameMap;
+
+  // Try the on-disk cache first to avoid a network round-trip.
+  try {
+    const cached = JSON.parse(await readFile(DETECTABLE_CACHE_PATH, "utf8")) as {
+      version: number;
+      timestamp: number;
+      entries: [string, DetectableGameInfo][];
+    };
+    if (
+      cached.version === DETECTABLE_CACHE_VERSION &&
+      Date.now() - cached.timestamp < DETECTABLE_TTL_MS
+    ) {
+      detectableNameMap = new Map(cached.entries);
+      return detectableNameMap;
+    }
+  } catch {}
+
+  // Fetch a fresh copy from Discord's public endpoint.
+  try {
+    const resp = await fetch("https://discord.com/api/v10/applications/detectable");
+    if (resp.ok) {
+      const list = (await resp.json()) as Array<{
+        id: string;
+        name: string;
+        icon?: string | null;
+        aliases?: string[];
+      }>;
+      detectableNameMap = new Map();
+      for (const g of list) {
+        const info: DetectableGameInfo = {
+          appId: g.id,
+          iconUrl: g.icon
+            ? `https://cdn.discordapp.com/app-icons/${g.id}/${g.icon}.png?size=512`
+            : null,
+        };
+        detectableNameMap.set(g.name.toLowerCase(), info);
+        for (const alias of g.aliases ?? []) {
+          detectableNameMap.set(alias.toLowerCase(), info);
+        }
+      }
+      try {
+        await mkdir(join(process.env.HOME!, ".local/share/steam-discord"), { recursive: true });
+        await writeFile(
+          DETECTABLE_CACHE_PATH,
+          JSON.stringify({
+            version: DETECTABLE_CACHE_VERSION,
+            timestamp: Date.now(),
+            entries: [...detectableNameMap],
+          }),
+        );
+      } catch {}
+      return detectableNameMap;
+    }
+  } catch {
+    console.warn("[Discord] Could not fetch detectable games list — voice icon may show '?'");
+  }
+
+  detectableNameMap ??= new Map();
+  return detectableNameMap;
+}
+
+/**
+ * Returns the Discord application ID and official icon URL for a game by name
+ * (from Discord's detectable-games registry), or null if unrecognised.
+ */
+export async function findDiscordGame(gameName: string): Promise<DetectableGameInfo | null> {
+  const map = await loadDetectableMap();
+  return map.get(gameName.toLowerCase()) ?? null;
 }
