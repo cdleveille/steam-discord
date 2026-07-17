@@ -43,13 +43,12 @@ async function resolveGameImage(
   isShortcut: boolean,
   discordIconUrl?: string,
 ): Promise<string | undefined> {
-  // Discord's official icon takes priority for regular Steam games.
-  if (!isShortcut && discordIconUrl) return discordIconUrl;
-
   if (assetCache.has(appId)) return assetCache.get(appId);
 
   if (!isShortcut) {
-    const url = await findSteamIconUrl(appId);
+    // Steam sources take priority (hash icon → 600×900 → capsule).
+    // Discord's image is a fallback for games with no local Steam cache.
+    const url = (await findSteamIconUrl(appId)) ?? discordIconUrl ?? undefined;
     if (url) {
       assetCache.set(appId, url);
       return url;
