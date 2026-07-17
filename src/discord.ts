@@ -162,6 +162,22 @@ export async function uploadApplicationAsset(
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "png";
   if (ext === "ico") return null;
 
+  // Emoji names: alphanumeric + underscores, 2-32 chars
+  const emojiName = `app${appId}`;
+  const authHeader = { Authorization: `Bot ${Config.DISCORD_BOT_TOKEN}` };
+
+  // Check whether the emoji was already uploaded (e.g. after an asset-cache clear).
+  // If it exists, reuse it rather than attempting a duplicate upload that would fail.
+  const listResp = await fetch(
+    `https://discord.com/api/v10/applications/${Config.DISCORD_APP_ID}/emojis`,
+    { headers: authHeader },
+  );
+  if (listResp.ok) {
+    const { items } = (await listResp.json()) as { items: Array<{ id: string; name: string }> };
+    const existing = items.find(e => e.name === emojiName);
+    if (existing) return `https://cdn.discordapp.com/emojis/${existing.id}.png`;
+  }
+
   let imageBuffer: Buffer;
   try {
     imageBuffer = await readFile(filePath);
@@ -171,17 +187,12 @@ export async function uploadApplicationAsset(
 
   const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
   const dataUrl = `data:${mime};base64,${imageBuffer.toString("base64")}`;
-  // Emoji names: alphanumeric + underscores, 2-32 chars
-  const emojiName = `app${appId}`;
 
   const resp = await fetch(
     `https://discord.com/api/v10/applications/${Config.DISCORD_APP_ID}/emojis`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bot ${Config.DISCORD_BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
+      headers: { ...authHeader, "Content-Type": "application/json" },
       body: JSON.stringify({ name: emojiName, image: dataUrl }),
     },
   );
