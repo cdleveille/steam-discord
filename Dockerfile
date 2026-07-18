@@ -14,7 +14,7 @@ RUN bun install --ignore-scripts --frozen-lockfile
 COPY --link . .
 
 RUN bun compile && \
-  chmod +x ./dist/app
+  chmod +x ./dist/steam-discord
 
 FROM gcr.io/distroless/base
 
@@ -22,5 +22,4 @@ COPY --from=build /app/dist /app/dist
 
 WORKDIR /app
 
-EXPOSE 3000
-ENTRYPOINT ["./dist/app"]
+ENTRYPOINT ["./dist/steam-discord"]
