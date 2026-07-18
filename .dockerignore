@@ -9,7 +9,7 @@
 **/node_modules
 .dockerignore
 Dockerfile
-fly.toml
-lefthook.yaml
-LICENSE
+install.sh
+lefthook.yml
 README.md
+uninstall.sh
