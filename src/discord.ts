@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import type { Socket } from "bun";
+import { encode as encodePng } from "fast-png";
 import { Config } from "./config";
 
 const OP_HANDSHAKE = 0;
@@ -153,17 +154,98 @@ export class DiscordIpc {
   }
 }
 
+// ICO format: 6-byte ICONDIR header, then N×16-byte ICONDIRENTRY records.
+// Each entry's image data is either a raw PNG or a BMP DIB blob.
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/**
+ * Convert a 32-bit BGRA BMP DIB (as stored inside ICO files) to a PNG buffer.
+ * BMP rows are stored bottom-up in BGRA order; convert to top-down RGBA for PNG.
+ */
+function icoFrameBmpToPng(bmpData: Buffer, width: number, height: number): Buffer | null {
+  if (bmpData.length < 40) return null;
+  const headerSize = bmpData.readUInt32LE(0);
+  const bitCount = bmpData.readUInt16LE(14);
+  if (bitCount !== 32) return null; // only 32-bit BGRA carries a per-pixel alpha channel
+
+  const rowSize = width * 4;
+  const data = new Uint8Array(width * height * 4);
+
+  for (let y = 0; y < height; y++) {
+    const srcOffset = headerSize + (height - 1 - y) * rowSize; // BMP rows are bottom-up
+    const dstOffset = y * rowSize;
+    for (let x = 0; x < width; x++) {
+      const s = srcOffset + x * 4;
+      const d = dstOffset + x * 4;
+      data[d] = bmpData[s + 2]!; // R  (BGRA → RGBA)
+      data[d + 1] = bmpData[s + 1]!; // G
+      data[d + 2] = bmpData[s]!; // B
+      data[d + 3] = bmpData[s + 3]!; // A
+    }
+  }
+
+  return Buffer.from(encodePng({ width, height, data, channels: 4 }));
+}
+
+function extractBestIcoFrame(data: Buffer): Buffer | null {
+  if (data.length < 6) return null;
+  const count = data.readUInt16LE(4);
+  if (count === 0) return null;
+
+  // Find the entry with the largest pixel area (width/height 0 means 256 in ICO).
+  let bestIndex = 0;
+  let bestArea = -1;
+  for (let i = 0; i < count; i++) {
+    const base = 6 + i * 16;
+    if (base + 16 > data.length) break;
+    const w = (data[base] ?? 0) === 0 ? 256 : (data[base] as number);
+    const h = (data[base + 1] ?? 0) === 0 ? 256 : (data[base + 1] as number);
+    if (w * h > bestArea) {
+      bestArea = w * h;
+      bestIndex = i;
+    }
+  }
+
+  const base = 6 + bestIndex * 16;
+  const w = (data[base] ?? 0) === 0 ? 256 : (data[base] as number);
+  const h = (data[base + 1] ?? 0) === 0 ? 256 : (data[base + 1] as number);
+  const imgSize = data.readUInt32LE(base + 8);
+  const imgOffset = data.readUInt32LE(base + 12);
+  const imgData = data.subarray(imgOffset, imgOffset + imgSize);
+
+  // Case 1: embedded PNG (Windows Vista+ large ICO entries — most common)
+  if (imgData.length >= 8 && imgData.subarray(0, 8).equals(PNG_MAGIC)) return imgData;
+
+  // Case 2: 32-bit BMP DIB — convert to PNG, preserving the BGRA alpha channel
+  const converted = icoFrameBmpToPng(imgData, w, h);
+  if (converted) return converted;
+
+  // Case 3: older / low-bit-depth BMP — scan all entries for any embedded PNG frame
+  for (let i = 0; i < count; i++) {
+    const b = 6 + i * 16;
+    if (b + 16 > data.length) break;
+    const sz = data.readUInt32LE(b + 8);
+    const off = data.readUInt32LE(b + 12);
+    const candidate = data.subarray(off, off + sz);
+    if (candidate.length >= 8 && candidate.subarray(0, 8).equals(PNG_MAGIC)) return candidate;
+  }
+
+  return null;
+}
+
 export async function uploadApplicationAsset(
   appId: string,
   filePath: string,
+  versionSuffix?: string,
 ): Promise<string | null> {
   if (!Config.DISCORD_BOT_TOKEN) return null;
 
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "png";
-  if (ext === "ico") return null;
 
-  // Emoji names: alphanumeric + underscores, 2-32 chars
-  const emojiName = `app${appId}`;
+  // Emoji names: alphanumeric + underscores, 2-32 chars.
+  // Including the version suffix ensures a changed icon file gets a new emoji
+  // rather than reusing the stale one (max length: 3 + 10 + 1 + 8 = 22 chars).
+  const emojiName = versionSuffix ? `app${appId}_${versionSuffix}` : `app${appId}`;
   const authHeader = { Authorization: `Bot ${Config.DISCORD_BOT_TOKEN}` };
 
   // Check whether the emoji was already uploaded (e.g. after an asset-cache clear).
@@ -185,8 +267,22 @@ export async function uploadApplicationAsset(
     return null;
   }
 
-  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
-  const dataUrl = `data:${mime};base64,${imageBuffer.toString("base64")}`;
+  // For ICO files, extract the largest PNG frame rather than uploading the raw
+  // container — Discord only accepts PNG/JPEG, and the biggest frame gives the
+  // best quality for the large image slot.
+  let uploadBuffer: Buffer;
+  let mime: string;
+  if (ext === "ico") {
+    const frame = extractBestIcoFrame(imageBuffer);
+    if (!frame) return null;
+    uploadBuffer = frame;
+    mime = "image/png";
+  } else {
+    uploadBuffer = imageBuffer;
+    mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+  }
+
+  const dataUrl = `data:${mime};base64,${uploadBuffer.toString("base64")}`;
 
   const resp = await fetch(
     `https://discord.com/api/v10/applications/${Config.DISCORD_APP_ID}/emojis`,

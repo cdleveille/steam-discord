@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Config } from "./config";
@@ -43,29 +44,40 @@ async function resolveGameImage(
   isShortcut: boolean,
   discordIconUrl?: string,
 ): Promise<string | undefined> {
-  if (assetCache.has(appId)) return assetCache.get(appId);
+  // ── 1. Custom grid artwork (SGDBoop / user-provided) ──────────────────────
+  // Steam stores user-set icons for both Steam and non-Steam games in the grid
+  // folder. Always check here first so SGDBoop images take priority over CDN.
+  const customIconPath = findShortcutIconPath(appId);
+  if (customIconPath) {
+    try {
+      const fileData = await readFile(customIconPath);
+      // Hash the file content so a changed icon busts the cache and triggers
+      // a fresh emoji upload rather than reusing the stale Discord emoji.
+      const versionSuffix = createHash("sha1").update(fileData).digest("hex").slice(0, 8);
+      const cacheKey = `${appId}:${versionSuffix}`;
+      if (assetCache.has(cacheKey)) return assetCache.get(cacheKey);
 
+      const assetName = await uploadApplicationAsset(appId, customIconPath, versionSuffix);
+      if (assetName) {
+        for (const key of [...assetCache.keys()]) {
+          if (key === appId || key.startsWith(`${appId}:`)) assetCache.delete(key);
+        }
+        assetCache.set(cacheKey, assetName);
+        await saveAssetCache();
+        return assetName;
+      }
+    } catch {}
+  }
+
+  // ── 2. Steam library cache / CDN (Steam games without a custom icon) ──────
   if (!isShortcut) {
-    // Steam sources take priority (hash icon → 600×900 → capsule).
-    // Discord's image is a fallback for games with no local Steam cache.
     const url = (await findSteamIconUrl(appId)) ?? discordIconUrl ?? undefined;
-    if (url) {
-      assetCache.set(appId, url);
-      return url;
-    }
-    return undefined;
+    if (url) assetCache.set(appId, url);
+    return url ?? assetCache.get(appId);
   }
 
-  const iconPath = findShortcutIconPath(appId);
-  if (!iconPath) return undefined;
-
-  const assetName = await uploadApplicationAsset(appId, iconPath);
-  if (assetName) {
-    assetCache.set(appId, assetName);
-    await saveAssetCache();
-    return assetName;
-  }
-  return undefined;
+  // ── 3. Fallback for shortcuts with no grid icon ───────────────────────────
+  return assetCache.get(appId);
 }
 
 await loadAssetCache();
