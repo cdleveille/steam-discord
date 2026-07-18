@@ -197,10 +197,7 @@ export interface DetectableGameInfo {
   iconUrl: string | null;
 }
 
-const DETECTABLE_CACHE_PATH = join(
-  process.env.HOME!,
-  ".local/share/steam-discord/detectable-cache.json",
-);
+const DETECTABLE_CACHE_PATH = join(Config.HOME, ".local/share/steam-discord/detectable-cache.json");
 const DETECTABLE_CACHE_VERSION = 2;
 const DETECTABLE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 
@@ -253,7 +250,7 @@ async function loadDetectableMap(): Promise<Map<string, DetectableGameInfo>> {
         }
       }
       try {
-        await mkdir(join(process.env.HOME!, ".local/share/steam-discord"), { recursive: true });
+        await mkdir(join(Config.HOME, ".local/share/steam-discord"), { recursive: true });
         await writeFile(
           DETECTABLE_CACHE_PATH,
           JSON.stringify({

@@ -21,7 +21,7 @@ console.log(
 // ── Asset cache ───────────────────────────────────────────────────────────────
 // Stores resolved image strings (CDN URLs for Steam, Discord asset names for shortcuts)
 // so we don't re-upload non-Steam icons across restarts.
-const ASSET_CACHE_PATH = join(process.env.HOME!, ".local/share/steam-discord/asset-cache.json");
+const ASSET_CACHE_PATH = join(Config.HOME, ".local/share/steam-discord/asset-cache.json");
 const assetCache = new Map<string, string>();
 
 async function loadAssetCache(): Promise<void> {
@@ -33,7 +33,7 @@ async function loadAssetCache(): Promise<void> {
 
 async function saveAssetCache(): Promise<void> {
   try {
-    await mkdir(join(process.env.HOME!, ".local/share/steam-discord"), { recursive: true });
+    await mkdir(join(Config.HOME, ".local/share/steam-discord"), { recursive: true });
     await writeFile(ASSET_CACHE_PATH, JSON.stringify(Object.fromEntries(assetCache)));
   } catch {}
 }
