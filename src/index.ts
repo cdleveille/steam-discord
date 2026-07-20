@@ -7,7 +7,7 @@ import {
   buildAppIdMap,
   findDiscordGame,
   findShortcutIconPath,
-  findSteamIconUrl,
+  findSteamIconPath,
   getLibraryPaths,
   getRunningGame,
   loadShortcuts,
@@ -39,45 +39,52 @@ async function saveAssetCache(): Promise<void> {
   } catch {}
 }
 
+async function uploadWithCache(appId: string, filePath: string): Promise<string | undefined> {
+  const fileData = await readFile(filePath);
+  const versionSuffix = createHash("sha1").update(fileData).digest("hex").slice(0, 8);
+  const cacheKey = `${appId}:${versionSuffix}`;
+  if (assetCache.has(cacheKey)) return assetCache.get(cacheKey);
+  const url = await uploadApplicationAsset(appId, filePath, versionSuffix);
+  if (url) {
+    for (const key of [...assetCache.keys()]) {
+      if (key === appId || key.startsWith(`${appId}:`)) assetCache.delete(key);
+    }
+    assetCache.set(cacheKey, url);
+    await saveAssetCache();
+  }
+  return url ?? undefined;
+}
+
 async function resolveGameImage(
   appId: string,
   isShortcut: boolean,
   discordIconUrl?: string,
 ): Promise<string | undefined> {
-  // ── 1. Custom grid artwork (SGDBoop / user-provided) ──────────────────────
-  // Steam stores user-set icons for both Steam and non-Steam games in the grid
-  // folder. Always check here first so SGDBoop images take priority over CDN.
-  const customIconPath = findShortcutIconPath(appId);
-  if (customIconPath) {
+  // ── 1. Grid folder — SGDBoop / user-provided icons for any game ───────────
+  const gridPath = findShortcutIconPath(appId);
+  if (gridPath) {
     try {
-      const fileData = await readFile(customIconPath);
-      // Hash the file content so a changed icon busts the cache and triggers
-      // a fresh emoji upload rather than reusing the stale Discord emoji.
-      const versionSuffix = createHash("sha1").update(fileData).digest("hex").slice(0, 8);
-      const cacheKey = `${appId}:${versionSuffix}`;
-      if (assetCache.has(cacheKey)) return assetCache.get(cacheKey);
-
-      const assetName = await uploadApplicationAsset(appId, customIconPath, versionSuffix);
-      if (assetName) {
-        for (const key of [...assetCache.keys()]) {
-          if (key === appId || key.startsWith(`${appId}:`)) assetCache.delete(key);
-        }
-        assetCache.set(cacheKey, assetName);
-        await saveAssetCache();
-        return assetName;
-      }
+      const url = await uploadWithCache(appId, gridPath);
+      if (url) return url;
     } catch {}
   }
 
-  // ── 2. Steam library cache / CDN (Steam games without a custom icon) ──────
+  // ── 2. Steam librarycache — always upload locally so SGDBoop replacements  ─
+  //       take effect (CDN would serve the original file regardless of local   ─
+  //       changes to the hash-named file).                                     ─
   if (!isShortcut) {
-    const url = (await findSteamIconUrl(appId)) ?? discordIconUrl ?? undefined;
-    if (url) assetCache.set(appId, url);
-    return url ?? assetCache.get(appId);
+    const libPath = await findSteamIconPath(appId);
+    if (libPath) {
+      try {
+        const url = await uploadWithCache(appId, libPath);
+        if (url) return url;
+      } catch {}
+    }
+    return discordIconUrl ?? undefined;
   }
 
-  // ── 3. Fallback for shortcuts with no grid icon ───────────────────────────
-  return assetCache.get(appId);
+  // ── 3. Fallback for shortcuts with no icon anywhere ───────────────────────
+  return discordIconUrl ?? assetCache.get(appId);
 }
 
 await loadAssetCache();
@@ -132,6 +139,8 @@ async function poll(): Promise<void> {
     if (game?.appId !== currentGame?.appId) {
       currentGame = game;
       await handleGameChange(game);
+    } else if (currentGame && !ipc.connected) {
+      await handleGameChange(currentGame);
     }
   } catch (err) {
     console.error(`[poll] ${err}`);

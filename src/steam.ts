@@ -148,6 +148,18 @@ export async function getRunningGame(
   return null;
 }
 
+export async function findSteamIconPath(appId: string): Promise<string | null> {
+  const dir = join(Config.STEAM_ROOT, `appcache/librarycache/${appId}`);
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return null;
+  }
+  const iconFile = entries.find(e => /^[0-9a-f]{40}\.jpg$/.test(e));
+  return iconFile ? join(dir, iconFile) : null;
+}
+
 export async function findSteamIconUrl(appId: string): Promise<string | null> {
   const dir = join(Config.STEAM_ROOT, `appcache/librarycache/${appId}`);
   let entries: string[];
