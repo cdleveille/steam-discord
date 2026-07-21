@@ -4,14 +4,14 @@ Reliable Discord rich presense for Steam games on Linux.
 
 Sets your Discord status to the game you're currently running in Steam — including non-Steam shortcuts — using local process detection rather than the Steam Web API, so it works even when your Steam status is set to Invisible or Offline.
 
-Icons are sourced from your Steam grid artwork folder first (so SGDBoop and other custom artwork tools are always used when available), falling back to the Steam CDN for games without custom icons.
+Icons are sourced from your Steam grid artwork folder first (so [SGDBoop](https://www.steamgriddb.com/boop) and other custom artwork tools are always used when available), falling back to the Steam CDN for games without custom icons.
 
 ## Prerequisites
 
 - Linux (tested on CachyOS/Arch, but _should_ work on any distro)
+- Steam
+- Discord
 - [Bun](https://bun.sh)
-- Steam running
-- Discord desktop app running
 
 ## Setup
 
