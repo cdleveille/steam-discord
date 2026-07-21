@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ACTION_REQUIRED=""
 CONFIG_DIR="$HOME/.config/steam-discord"
 ENV_FILE="$CONFIG_DIR/env"
 BIN_DIR="$HOME/.local/bin"
@@ -30,13 +29,22 @@ if [ ! -f "$ENV_FILE" ]; then
     chmod 700 "$CONFIG_DIR"
     touch "$ENV_FILE"
     chmod 600 "$ENV_FILE"
-    cat <<'EOF' >> "$ENV_FILE"
-DISCORD_APP_ID=your_application_id
-DISCORD_BOT_TOKEN=your_bot_token
-# Optional — enables icons for non-Steam shortcuts
-# STEAM_USER_ID=your_steamid64
-EOF
-    ACTION_REQUIRED="  !! Action required: edit $ENV_FILE and fill in your Discord credentials,\n     then run: systemctl --user restart steam-discord"
+
+    echo ""
+    echo "Enter your Discord credentials (these will be saved to $ENV_FILE)."
+    echo "See README.md for details on where to find each value."
+    echo ""
+
+    read -r -p "  DISCORD_APP_ID: " discord_app_id
+    read -r -s -p "  DISCORD_BOT_TOKEN: " discord_bot_token
+    echo ""
+    read -r -p "  STEAM_USER_ID (your 64-bit Steam ID, see steamid.io): " steam_user_id
+
+    {
+        echo "DISCORD_APP_ID=${discord_app_id}"
+        echo "DISCORD_BOT_TOKEN=${discord_bot_token}"
+        echo "STEAM_USER_ID=${steam_user_id}"
+    } >> "$ENV_FILE"
 else
     echo "Config file $ENV_FILE already exists, skipping creation."
 fi
@@ -64,11 +72,6 @@ echo "Enabling and starting steam-discord service..."
 systemctl --user daemon-reload
 systemctl --user enable steam-discord
 systemctl --user restart steam-discord
-
-if [ -n "$ACTION_REQUIRED" ]; then
-    echo ""
-    echo -e "$ACTION_REQUIRED"
-fi
 
 echo ""
 echo "Done. Check service status with:"

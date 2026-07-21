@@ -114,15 +114,16 @@ export class DiscordIpc {
   }
 
   setActivity(gameName: string, startTimestamp: number, largeImage?: string): void {
+    const cleanName = gameName.replace(/[®™©℠]/g, "").trim();
     this.send(OP_FRAME, {
       cmd: "SET_ACTIVITY",
       args: {
         pid: process.pid,
         activity: {
-          name: gameName,
+          name: cleanName,
           type: 0,
           timestamps: { start: Math.floor(startTimestamp / 1000) },
-          ...(largeImage ? { assets: { large_image: largeImage, large_text: gameName } } : {}),
+          ...(largeImage ? { assets: { large_image: largeImage, large_text: cleanName } } : {}),
         },
       },
       nonce: crypto.randomUUID(),

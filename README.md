@@ -25,27 +25,15 @@ cd steam-discord
 
 This installs dependencies, compiles the binary, installs it to `~/.local/bin`, and sets up a systemd user service that starts automatically on login.
 
+If no config file is found at `~/.config/steam-discord/env`, the script will interactively prompt you to enter your credentials before starting the service.
+
 **2. Create a Discord application**
 
 Go to the [Discord Developer Portal](https://discord.com/developers/applications), create a new application, and note the **Application ID**. Under the application, create a **Bot** and copy its token.
 
-**3. Fill in your credentials**
+**3. Find your Steam ID**
 
-Edit `~/.config/steam-discord/env`:
-
-```sh
-DISCORD_APP_ID=your_application_id
-DISCORD_BOT_TOKEN=your_bot_token
-STEAM_USER_ID=your_steamid64
-```
-
-`STEAM_USER_ID` is your 64-bit Steam ID. You can find it at [steamid.io](https://steamid.io). It is required to locate your Steam grid artwork folder, which is used for both Steam games and non-Steam shortcuts.
-
-Then restart the service:
-
-```sh
-systemctl --user restart steam-discord
-```
+`STEAM_USER_ID` is your 64-bit Steam ID. You can find it at [steamid.io](https://steamid.io). It is required to locate your Steam grid artwork folder, which is used for icon resolution for both Steam games and non-Steam shortcuts.
 
 Check status or follow logs:
 
