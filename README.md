@@ -2,6 +2,8 @@
 
 Reliable Discord rich presense for Steam games on Linux.
 
+Discord rich presence for Steam games on Linux can be a bit buggy. Sometimes the game you're running will show the wrong title, or won't show up at all. This project aims to fix that.
+
 Sets your Discord status to the game you're currently running in Steam — including non-Steam shortcuts — using local process detection rather than the Steam Web API, so it works even when your Steam status is set to Invisible or Offline.
 
 Icons are sourced from your Steam grid artwork folder first (so [SGDBoop](https://www.steamgriddb.com/boop) and other custom artwork tools are always used when available), falling back to the Steam CDN for games without custom icons.
