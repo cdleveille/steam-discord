@@ -25,15 +25,15 @@ cd steam-discord
 
 This installs dependencies, compiles the binary, installs it to `~/.local/bin`, and sets up a systemd user service that starts automatically on login.
 
-If no config file is found at `~/.config/steam-discord/env`, the script will interactively prompt you to enter your credentials before starting the service.
+If no config file is found at `~/.config/steam-discord/env`, the script will interactively prompt you to enter your credentials before starting the service. See below for info on how to obtain the required values.
 
-**2. Create a Discord application**
+**2. Find your `DISCORD_APP_ID` and `DISCORD_BOT_TOKEN`**
 
-Go to the [Discord Developer Portal](https://discord.com/developers/applications), create a new application, and note the **Application ID**. Under the application, create a **Bot** and copy its token.
+Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a new application named "Steam Rich Presence". Copy the **Application ID** from the General Information tab, and copy the **Token** from the Bot tab.
 
-**3. Find your Steam ID**
+**3. Find your `STEAM_USER_ID`**
 
-`STEAM_USER_ID` is your 64-bit Steam ID. You can find it at [steamid.io](https://steamid.io). It is required to locate your Steam grid artwork folder, which is used for icon resolution for both Steam games and non-Steam shortcuts.
+Go to [steamid.io](https://steamid.io) and enter your Steam profile URL. Copy the **steamID64** value from the results. It is required to locate your Steam grid artwork folder, which is used for icon resolution for both Steam games and non-Steam shortcuts.
 
 Check status or follow logs:
 
