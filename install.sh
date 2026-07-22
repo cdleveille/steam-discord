@@ -31,7 +31,7 @@ if [ ! -f "$ENV_FILE" ]; then
     chmod 600 "$ENV_FILE"
 
     echo ""
-    echo "Enter your Discord credentials (these will be saved to $ENV_FILE)."
+    echo "Enter your Discord/Steam credentials (these will be saved to $ENV_FILE)."
     echo "See README.md for details on where to find each value."
     echo ""
 
