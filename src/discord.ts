@@ -19,9 +19,12 @@ function ipcEncode(op: number, payload: object): Buffer {
 }
 
 function findIpcSocket(): string | null {
+  const runtimeDir = process.env.XDG_RUNTIME_DIR ?? `/run/user/${process.getuid?.() ?? 1000}`;
   const dirs = [
-    process.env.XDG_RUNTIME_DIR,
+    runtimeDir,
     `/run/user/${process.getuid?.() ?? 1000}`,
+    // Flatpak Discord sandboxes its socket into a per-app runtime subdir.
+    `${runtimeDir}/app/com.discordapp.Discord`,
     process.env.TMPDIR,
     "/tmp",
   ].filter(Boolean) as string[];

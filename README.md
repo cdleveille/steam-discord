@@ -10,9 +10,9 @@ Icons are sourced from your Steam grid artwork folder first (so [SGDBoop](https:
 
 ## Prerequisites
 
-- Linux (tested on CachyOS/Arch, but _should_ work on any distro)
-- Steam (installed as a system package, Flatpak not supported)
-- Discord (installed as a system package, Flatpak not supported)
+- Linux (tested on CachyOS/Arch, but _should_ work on most distros)
+- Steam (system package or Flatpak — auto-detected)
+- Discord (system package or Flatpak — auto-detected)
 - [Bun](https://bun.sh)
 
 ## Setup

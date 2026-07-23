@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -21,11 +22,24 @@ if (!STEAM_USER_ID) {
 
 const HOME = process.env.HOME ?? homedir();
 
+// Steam's data root differs by packaging. The internal layout under each root
+// (steamapps/, userdata/, appcache/, …) is identical, so only the base path
+// varies. Probe known locations and use the first that exists; fall back to the
+// native path so a not-yet-installed Steam still yields a sensible error later.
+function detectSteamRoot(): string {
+  const candidates = [
+    join(HOME, ".local/share/Steam"), // native (Arch/Debian/etc.)
+    join(HOME, ".steam/steam"), // older native symlink layout
+    join(HOME, ".var/app/com.valvesoftware.Steam/.local/share/Steam"), // flatpak
+  ];
+  return candidates.find(p => existsSync(join(p, "steamapps"))) ?? candidates[0]!;
+}
+
 export const Config = {
   DISCORD_APP_ID,
   DISCORD_BOT_TOKEN,
   HOME,
-  STEAM_ROOT: join(HOME, ".local/share/Steam"),
+  STEAM_ROOT: detectSteamRoot(),
   STEAM_USER_ID,
   POLL_MS: 5_000,
 };
