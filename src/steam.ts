@@ -138,7 +138,8 @@ export async function getRunningGame(
       if (!entry) continue;
       const appId = entry.slice("SteamAppId=".length);
       if (appId && appId !== "0") {
-        const name = appIdMap.get(appId) ?? shortcuts.get(appId) ?? `Unknown game (appid ${appId})`;
+        const name = appIdMap.get(appId) ?? shortcuts.get(appId);
+        if (!name) continue;
         return { name, appId };
       }
     } catch {
