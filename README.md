@@ -6,7 +6,7 @@ Discord rich presence for Steam games on Linux can be a bit buggy. Sometimes the
 
 Sets your Discord status to the game you're currently running in Steam — including non-Steam shortcuts — using local process detection rather than the Steam Web API, so it works even when your Steam status is set to Invisible or Offline.
 
-Icons are sourced from your Steam grid artwork folder first (so [SGDBoop](https://www.steamgriddb.com/boop) and other custom artwork tools are always used when available), falling back to the Steam CDN for games without custom icons.
+Icons are sourced from the icon set in your Steam game properties first (so the sidebar icon is always what shows in Discord), then your Steam grid artwork folder (so [SGDBoop](https://www.steamgriddb.com/boop) and similar tools are respected), falling back to the Steam CDN for games without custom icons.
 
 ## Prerequisites
 
@@ -58,7 +58,24 @@ bun dev
 
 ## How it works
 
-- Scans `/proc/*/environ` every 5 seconds for the `SteamAppId` variable that Steam injects into every game process
-- Resolves the app ID to a name via `appmanifest_*.acf` files (Steam games) or `shortcuts.vdf` (non-Steam shortcuts)
-- Communicates with Discord over its local IPC socket (`$XDG_RUNTIME_DIR/discord-ipc-0`) to set rich presence
-- For icons: your Steam grid artwork folder is checked first for every game (so custom icons set via SGDBoop or similar tools always take priority); Steam games without custom artwork fall back to Steam's public CDN; all uploaded emoji assets are cached in `~/.local/share/steam-discord/asset-cache.json` and automatically refreshed when the source file changes
+**Detection**
+
+Every 5 seconds, the service checks whether a game is running. While a game is active it only reads a single `/proc/{pid}/environ` file to confirm the process is still alive. A full `/proc` scan (reading every process's environment to find `SteamAppId`) only happens when no game is currently tracked, or when the tracked process exits. If a running game's app ID isn't in the cached name maps (e.g. a non-Steam shortcut added while the service was already running), the maps are reloaded on the spot and the lookup is retried — no restart required.
+
+**Name resolution**
+
+- **Steam games** — matched against `appmanifest_*.acf` files across all configured library folders
+- **Non-Steam shortcuts** — matched against `shortcuts.vdf` in your Steam userdata folder
+
+**Discord application ID**
+
+If the game appears in Discord's public detectable-games registry, its own Discord application ID is used for the IPC connection. This is what makes the correct artwork appear in voice channels automatically. Unrecognized games fall back to your configured `DISCORD_APP_ID`.
+
+**Icon resolution** (first match wins)
+
+1. `shortcuts.vdf` icon field — the path Steam stores when you set an icon via the game properties dialog; exactly what appears in the Steam sidebar (non-Steam shortcuts only)
+2. `grid/{appId}_icon.*` — where [SGDBoop](https://www.steamgriddb.com/boop) and similar tools save custom icons (any game, Steam or non-Steam)
+3. Local `appcache/librarycache/` file, uploaded to Discord — used for Steam games so locally-replaced artwork takes effect instead of the original CDN file
+4. Discord's detectable-games CDN URL — fallback for Steam games with no local artwork
+
+Icons uploaded to Discord are cached by content hash in `~/.local/share/steam-discord/asset-cache.json` and only re-uploaded when the source file changes.

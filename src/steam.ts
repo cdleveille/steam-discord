@@ -301,7 +301,7 @@ async function loadDetectableMap(): Promise<Map<string, DetectableGameInfo>> {
 
 /**
  * Returns the Discord application ID and official icon URL for a game by name
- * (from Discord's detectable-games registry), or null if unrecognised.
+ * (from Discord's detectable-games registry), or null if unrecognized.
  */
 export async function findDiscordGame(gameName: string): Promise<DetectableGameInfo | null> {
   const map = await loadDetectableMap();

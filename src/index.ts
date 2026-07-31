@@ -106,7 +106,7 @@ async function handleGameChange(game: { name: string; appId: string } | null): P
     console.log(`[${new Date().toISOString()}] Now playing: ${game.name}`);
     // Use the game's own Discord application ID if it's in the detectable-games
     // registry — this is what makes the correct icon appear in the voice channel.
-    // Fall back to the configured custom app ID for unrecognised games.
+    // Fall back to the configured custom app ID for unrecognized games.
     const discordGame = await findDiscordGame(game.name);
     const discordAppId = discordGame?.appId ?? Config.DISCORD_APP_ID;
 
