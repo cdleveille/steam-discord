@@ -10,11 +10,13 @@ import {
   findSteamIconPath,
   getLibraryPaths,
   getRunningGame,
+  isGameStillRunning,
   loadShortcuts,
 } from "./steam";
 
 const libraryPaths = await getLibraryPaths();
-const [appIdMap, shortcuts] = await Promise.all([buildAppIdMap(libraryPaths), loadShortcuts()]);
+let appIdMap = await buildAppIdMap(libraryPaths);
+let shortcuts = await loadShortcuts();
 console.log(
   `Loaded ${appIdMap.size} games + ${shortcuts.size} shortcuts from ${libraryPaths.length} library path(s)`,
 );
@@ -92,6 +94,7 @@ await loadAssetCache();
 // ── Main loop ─────────────────────────────────────────────────────────────────
 const ipc = new DiscordIpc();
 let currentGame: { name: string; appId: string } | null = undefined!;
+let currentGamePid: string | null = null;
 let gameStartTime = 0;
 let polling = false;
 
@@ -135,7 +138,24 @@ async function poll(): Promise<void> {
   if (polling) return;
   polling = true;
   try {
-    const game = await getRunningGame(appIdMap, shortcuts);
+    // Fast path: one readFile instead of scanning all of /proc.
+    if (currentGame !== null && currentGamePid !== null) {
+      if (await isGameStillRunning(currentGamePid, currentGame.appId)) {
+        if (!ipc.connected) await handleGameChange(currentGame);
+        return;
+      }
+      currentGamePid = null;
+    }
+
+    let result = await getRunningGame(appIdMap, shortcuts);
+    if (result !== null && result.name === null) {
+      // Unknown appId — a new game was added while running; reload maps and retry once.
+      [appIdMap, shortcuts] = await Promise.all([buildAppIdMap(libraryPaths), loadShortcuts()]);
+      result = await getRunningGame(appIdMap, shortcuts);
+    }
+    const game =
+      result !== null && result.name !== null ? { name: result.name, appId: result.appId } : null;
+    currentGamePid = result?.pid ?? null;
     if (game?.appId !== currentGame?.appId) {
       currentGame = game;
       await handleGameChange(game);

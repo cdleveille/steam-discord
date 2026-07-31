@@ -118,10 +118,23 @@ export async function loadShortcuts(): Promise<Map<string, string>> {
   }
 }
 
+export async function isGameStillRunning(pid: string, appId: string): Promise<boolean> {
+  try {
+    const buf = await readFile(`/proc/${pid}/environ`).catch(() => null);
+    if (!buf) return false;
+    return new TextDecoder()
+      .decode(buf)
+      .split("\0")
+      .some(v => v === `SteamAppId=${appId}`);
+  } catch {
+    return false;
+  }
+}
+
 export async function getRunningGame(
   appIdMap: Map<string, string>,
   shortcuts: Map<string, string>,
-): Promise<{ name: string; appId: string } | null> {
+): Promise<{ name: string | null; appId: string; pid: string } | null> {
   let pids: string[];
   try {
     pids = await readdir("/proc");
@@ -138,9 +151,7 @@ export async function getRunningGame(
       if (!entry) continue;
       const appId = entry.slice("SteamAppId=".length);
       if (appId && appId !== "0") {
-        const name = appIdMap.get(appId) ?? shortcuts.get(appId);
-        if (!name) continue;
-        return { name, appId };
+        return { name: appIdMap.get(appId) ?? shortcuts.get(appId) ?? null, appId, pid };
       }
     } catch {
       // process exited or not readable
