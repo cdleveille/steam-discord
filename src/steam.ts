@@ -42,7 +42,7 @@ export async function buildAppIdMap(libraryPaths: string[]): Promise<Map<string,
   return map;
 }
 
-function parseShortcutsVdf(buf: Uint8Array): Map<string, string> {
+function parseShortcutsVdf(buf: Uint8Array): Map<string, { name: string; icon: string | null }> {
   let pos = 0;
   const dec = new TextDecoder();
 
@@ -74,7 +74,7 @@ function parseShortcutsVdf(buf: Uint8Array): Map<string, string> {
     }
   }
 
-  const map = new Map<string, string>();
+  const map = new Map<string, { name: string; icon: string | null }>();
   if (buf[pos] !== 0x00) return map;
   pos++;
   readCStr(); // "shortcuts"
@@ -90,22 +90,24 @@ function parseShortcutsVdf(buf: Uint8Array): Map<string, string> {
 
     let appId: number | null = null;
     let appName: string | null = null;
+    let icon: string | null = null;
 
     while (pos < buf.length && buf[pos] !== 0x08) {
       const t = buf[pos++]!;
       const field = readCStr();
       if (t === 0x02 && field.toLowerCase() === "appid") appId = readU32();
       else if (t === 0x01 && field.toLowerCase() === "appname") appName = readCStr();
+      else if (t === 0x01 && field.toLowerCase() === "icon") icon = readCStr() || null;
       else skip(t);
     }
     pos++;
 
-    if (appId !== null && appName) map.set(String(appId), appName);
+    if (appId !== null && appName) map.set(String(appId), { name: appName, icon });
   }
   return map;
 }
 
-export async function loadShortcuts(): Promise<Map<string, string>> {
+export async function loadShortcuts(): Promise<Map<string, { name: string; icon: string | null }>> {
   if (!Config.STEAM_USER_ID) return new Map();
   const accountId = Number(BigInt(Config.STEAM_USER_ID) & 0xffffffffn);
   try {
@@ -133,7 +135,7 @@ export async function isGameStillRunning(pid: string, appId: string): Promise<bo
 
 export async function getRunningGame(
   appIdMap: Map<string, string>,
-  shortcuts: Map<string, string>,
+  shortcuts: Map<string, { name: string; icon: string | null }>,
 ): Promise<{ name: string | null; appId: string; pid: string } | null> {
   let pids: string[];
   try {
@@ -151,7 +153,8 @@ export async function getRunningGame(
       if (!entry) continue;
       const appId = entry.slice("SteamAppId=".length);
       if (appId && appId !== "0") {
-        return { name: appIdMap.get(appId) ?? shortcuts.get(appId) ?? null, appId, pid };
+        const name = appIdMap.get(appId) ?? shortcuts.get(appId)?.name ?? null;
+        return { name, appId, pid };
       }
     } catch {
       // process exited or not readable
@@ -200,7 +203,9 @@ export async function findSteamIconUrl(appId: string): Promise<string | null> {
   return null;
 }
 
-export function findShortcutIconPath(appId: string): string | null {
+export function findShortcutIconPath(appId: string, vdfIconPath?: string | null): string | null {
+  // VDF icon field — exactly what Steam displays in the sidebar.
+  if (vdfIconPath && existsSync(vdfIconPath)) return vdfIconPath;
   if (!Config.STEAM_USER_ID) return null;
   const accountId = Number(BigInt(Config.STEAM_USER_ID) & 0xffffffffn);
   const base = join(Config.STEAM_ROOT, `userdata/${accountId}/config/grid`);

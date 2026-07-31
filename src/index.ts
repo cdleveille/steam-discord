@@ -63,7 +63,10 @@ async function resolveGameImage(
   discordIconUrl?: string,
 ): Promise<string | undefined> {
   // ── 1. Grid folder — SGDBoop / user-provided icons for any game ───────────
-  const gridPath = findShortcutIconPath(appId);
+  const gridPath = findShortcutIconPath(
+    appId,
+    isShortcut ? (shortcuts.get(appId)?.icon ?? null) : null,
+  );
   if (gridPath) {
     try {
       const url = await uploadWithCache(appId, gridPath);
