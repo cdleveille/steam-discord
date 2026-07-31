@@ -159,6 +159,7 @@ async function poll(): Promise<void> {
     const game =
       result !== null && result.name !== null ? { name: result.name, appId: result.appId } : null;
     currentGamePid = result?.pid ?? null;
+    if (game !== null) shortcuts = await loadShortcuts();
     if (game?.appId !== currentGame?.appId) {
       currentGame = game;
       await handleGameChange(game);
