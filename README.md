@@ -13,7 +13,7 @@ Icons are sourced from the icon set in your Steam game properties first (so the 
 - Linux (tested on CachyOS/Arch, but _should_ work on most distros)
 - Steam (system package or Flatpak — auto-detected)
 - Discord (system package or Flatpak — auto-detected)
-- [Bun](https://bun.sh)
+- [Go](https://go.dev) 1.22+
 
 ## Setup
 
@@ -53,7 +53,7 @@ journalctl --user -u steam-discord -f
 ## Development
 
 ```sh
-bun dev
+go run ./src
 ```
 
 ## How it works

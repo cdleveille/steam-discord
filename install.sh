@@ -8,21 +8,19 @@ BIN_DIR="$HOME/.local/bin"
 SERVICE_DIR="$HOME/.config/systemd/user"
 SERVICE_FILE="$SERVICE_DIR/steam-discord.service"
 
-# ── 1. Install Bun dependencies ───────────────────────────────────────────────
-echo "Installing dependencies..."
 cd "$SCRIPT_DIR"
-bun install
 
-# ── 2. Compile standalone binary ──────────────────────────────────────────────
-echo "Compiling binary..."
-bun run compile
+# ── 1. Compile binary ─────────────────────────────────────────────────────────
+echo "Compiling..."
+mkdir -p dist
+go build -C src -o "$SCRIPT_DIR/dist/steam-discord" .
 
-# ── 3. Install binary ─────────────────────────────────────────────────────────
+# ── 2. Install binary ─────────────────────────────────────────────────────────
 echo "Installing binary to $BIN_DIR..."
 mkdir -p "$BIN_DIR"
 install -m755 dist/steam-discord "$BIN_DIR/steam-discord"
 
-# ── 4. Create config dir and env file (if not already present) ────────────────
+# ── 3. Create config dir and env file (if not already present) ────────────────
 if [ ! -f "$ENV_FILE" ]; then
     echo "Creating config directory and env file at $ENV_FILE..."
     mkdir -p "$CONFIG_DIR"
@@ -49,7 +47,7 @@ else
     echo "Config file $ENV_FILE already exists, skipping creation."
 fi
 
-# ── 5. Create systemd user service ────────────────────────────────────────────
+# ── 4. Create systemd user service ──────────────────────────────────────────
 echo "Creating systemd service at $SERVICE_FILE..."
 mkdir -p "$SERVICE_DIR"
 cat > "$SERVICE_FILE" <<EOF
@@ -67,7 +65,7 @@ RestartSec=10
 WantedBy=default.target
 EOF
 
-# ── 6. Enable and (re)start the service ──────────────────────────────────────
+# ── 5. Enable and (re)start the service ─────────────────────────────────────
 echo "Enabling and starting steam-discord service..."
 systemctl --user daemon-reload
 systemctl --user enable steam-discord

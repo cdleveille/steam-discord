@@ -10,11 +10,9 @@ jobs:
   cicd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          bun-version: latest
-      - run: bun install --ignore-scripts --frozen-lockfile
-      - run: bun biome ci .
-      - run: bun tsc
-      - run: bun compile
+          go-version-file: src/go.mod
+      - run: go vet ./src/...
+      - run: go build -C src -o ../dist/steam-discord .
