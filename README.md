@@ -25,9 +25,7 @@ cd steamd
 ./install.sh
 ```
 
-This compiles the binary, installs it to `~/.local/bin`, and sets up a systemd user service that starts automatically on login.
-
-The script will prompt you to either download the latest release binary from GitHub (default) or build from source via `go build`.
+The install script will prompt you to either download the [latest release](https://github.com/cdleveille/steamd/releases/latest) binary from GitHub (default) or build from source via `go build`. It installs the binary to `~/.local/bin`, and sets up a systemd user service that starts automatically on login.
 
 If no config file is found at `~/.config/steamd/env`, the script will interactively prompt you to enter your credentials before starting the service. See below for info on how to obtain the required values.
 

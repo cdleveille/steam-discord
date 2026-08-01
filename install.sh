@@ -16,11 +16,17 @@ cd "$SCRIPT_DIR"
 mkdir -p dist
 echo "How would you like to install the steamd binary?"
 echo "  1) Download the latest release binary from GitHub (default)"
-echo "  2) Build from source (Go must be installed)"
+echo "  2) Build from source"
 read -r -p "Select an option [1]: " install_method
 install_method="${install_method:-1}"
 
 if [ "$install_method" = "2" ]; then
+    if ! command -v go &>/dev/null; then
+        echo "Error: go is required to build from source. Install go, or re-run and choose to download the release binary." >&2
+		echo "https://go.dev" >&2
+        exit 1
+    fi
+
     echo "Compiling from source..."
     go build -C src -o "$SCRIPT_DIR/dist/steamd" .
 else
@@ -67,11 +73,11 @@ else
 fi
 
 # ── 4. Create systemd user service ──────────────────────────────────────────
-echo "Creating systemd service at $SERVICE_FILE..."
+echo "Creating systemd user service at $SERVICE_FILE..."
 mkdir -p "$SERVICE_DIR"
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=Steam Discord Rich Presence
+Description=steamd
 After=graphical-session.target
 
 [Service]
@@ -85,7 +91,7 @@ WantedBy=default.target
 EOF
 
 # ── 5. Enable and (re)start the service ─────────────────────────────────────
-echo "Enabling and starting steamd service..."
+echo "Enabling and starting steamd.service..."
 systemctl --user daemon-reload
 systemctl --user enable steamd
 systemctl --user restart steamd
