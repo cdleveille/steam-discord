@@ -14,5 +14,5 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: src/go.mod
-      - run: go vet ./src/...
+      - run: go vet -C src ./...
       - run: go build -C src -o ../dist/steam-discord .
