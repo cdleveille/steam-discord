@@ -299,12 +299,12 @@ func extractBestIcoFrame(data []byte) []byte {
 	}
 	imgData := data[imgOffset : imgOffset+imgSize]
 
-	// Embedded PNG — most common for modern ICO files.
+	// Embedded PNG - most common for modern ICO files.
 	if len(imgData) >= 8 && bytes.Equal(imgData[:8], pngMagic) {
 		return imgData
 	}
 
-	// 32-bit BMP DIB — convert to PNG.
+	// 32-bit BMP DIB - convert to PNG.
 	if result := icoFrameBmpToPng(imgData, w, h); result != nil {
 		return result
 	}

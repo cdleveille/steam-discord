@@ -256,7 +256,7 @@ func findSteamIconPath(appID string) string {
 }
 
 func findShortcutIconPath(appID, vdfIconPath string) string {
-	// VDF icon field — exactly what Steam displays in the sidebar.
+	// VDF icon field - exactly what Steam displays in the sidebar.
 	if vdfIconPath != "" {
 		if _, err := os.Stat(vdfIconPath); err == nil {
 			return vdfIconPath
@@ -299,7 +299,7 @@ func loadDetectableMap() map[string]detectableGameInfo {
 		return detectableMap
 	}
 
-	cachePath := filepath.Join(Config.Home, ".local/share/steam-discord/detectable-cache.json")
+	cachePath := filepath.Join(Config.Home, ".local/share/steamd/detectable-cache.json")
 
 	// Try on-disk cache first.
 	if data, err := os.ReadFile(cachePath); err == nil {
@@ -315,7 +315,7 @@ func loadDetectableMap() map[string]detectableGameInfo {
 	// Fetch from Discord's public endpoint.
 	resp, err := http.Get("https://discord.com/api/v10/applications/detectable")
 	if err != nil || resp.StatusCode != 200 {
-		fmt.Fprintln(os.Stderr, "[Discord] Could not fetch detectable games list — voice icon may show '?'")
+		fmt.Fprintln(os.Stderr, "[Discord] Could not fetch detectable games list - voice icon may show '?'")
 		detectableMap = map[string]detectableGameInfo{}
 		return detectableMap
 	}

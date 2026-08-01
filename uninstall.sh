@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BIN_FILE="$HOME/.local/bin/steam-discord"
-CONFIG_DIR="$HOME/.config/steam-discord"
-SERVICE_FILE="$HOME/.config/systemd/user/steam-discord.service"
+BIN_FILE="$HOME/.local/bin/steamd"
+CONFIG_DIR="$HOME/.config/steamd"
+SERVICE_FILE="$HOME/.config/systemd/user/steamd.service"
 
 # ── 1. Stop and disable the systemd service ───────────────────────────────────
-if systemctl --user is-active --quiet steam-discord 2>/dev/null; then
-    echo "Stopping steam-discord service..."
-    systemctl --user stop steam-discord
+if systemctl --user is-active --quiet steamd 2>/dev/null; then
+    echo "Stopping steamd service..."
+    systemctl --user stop steamd
 fi
 
-if systemctl --user is-enabled --quiet steam-discord 2>/dev/null; then
-    echo "Disabling steam-discord service..."
-    systemctl --user disable steam-discord
+if systemctl --user is-enabled --quiet steamd 2>/dev/null; then
+    echo "Disabling steamd service..."
+    systemctl --user disable steamd
 fi
 
 # ── 2. Remove the service unit file ───────────────────────────────────────────

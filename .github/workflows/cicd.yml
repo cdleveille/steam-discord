@@ -15,4 +15,4 @@ jobs:
         with:
           go-version-file: src/go.mod
       - run: go vet -C src ./...
-      - run: go build -C src -o ../dist/steam-discord .
+      - run: go build -C src -o ../dist/steamd .

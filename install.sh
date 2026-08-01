@@ -2,23 +2,23 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="$HOME/.config/steam-discord"
+CONFIG_DIR="$HOME/.config/steamd"
 ENV_FILE="$CONFIG_DIR/env"
 BIN_DIR="$HOME/.local/bin"
 SERVICE_DIR="$HOME/.config/systemd/user"
-SERVICE_FILE="$SERVICE_DIR/steam-discord.service"
+SERVICE_FILE="$SERVICE_DIR/steamd.service"
 
 cd "$SCRIPT_DIR"
 
 # ── 1. Compile binary ─────────────────────────────────────────────────────────
 echo "Compiling..."
 mkdir -p dist
-go build -C src -o "$SCRIPT_DIR/dist/steam-discord" .
+go build -C src -o "$SCRIPT_DIR/dist/steamd" .
 
 # ── 2. Install binary ─────────────────────────────────────────────────────────
 echo "Installing binary to $BIN_DIR..."
 mkdir -p "$BIN_DIR"
-install -m755 dist/steam-discord "$BIN_DIR/steam-discord"
+install -m755 dist/steamd "$BIN_DIR/steamd"
 
 # ── 3. Create config dir and env file (if not already present) ────────────────
 if [ ! -f "$ENV_FILE" ]; then
@@ -56,8 +56,8 @@ Description=Steam Discord Rich Presence
 After=graphical-session.target
 
 [Service]
-EnvironmentFile=%h/.config/steam-discord/env
-ExecStart=%h/.local/bin/steam-discord
+EnvironmentFile=%h/.config/steamd/env
+ExecStart=%h/.local/bin/steamd
 Restart=on-failure
 RestartSec=10
 
@@ -66,11 +66,11 @@ WantedBy=default.target
 EOF
 
 # ── 5. Enable and (re)start the service ─────────────────────────────────────
-echo "Enabling and starting steam-discord service..."
+echo "Enabling and starting steamd service..."
 systemctl --user daemon-reload
-systemctl --user enable steam-discord
-systemctl --user restart steam-discord
+systemctl --user enable steamd
+systemctl --user restart steamd
 
 echo ""
 echo "Done. Check service status with:"
-echo "  systemctl --user status steam-discord"
+echo "  systemctl --user status steamd"

@@ -14,7 +14,7 @@ import (
 // Maps "appID:sha1prefix" → Discord CDN URL / emoji URL.
 
 var (
-	assetCachePath = filepath.Join(mustHome(), ".local/share/steam-discord/asset-cache.json")
+	assetCachePath = filepath.Join(mustHome(), ".local/share/steamd/asset-cache.json")
 	assetCache     = map[string]string{}
 )
 
@@ -85,7 +85,7 @@ func resolveGameImage(appID string, isShortcut bool, shortcutIcon, discordIconUR
 		}
 	}
 
-	// 2. Steam librarycache — upload locally so SGDBoop replacements take effect.
+	// 2. Steam librarycache - upload locally so SGDBoop replacements take effect.
 	if !isShortcut {
 		if libPath := findSteamIconPath(appID); libPath != "" {
 			if url := uploadWithCache(appID, libPath); url != "" {
@@ -137,7 +137,7 @@ func main() {
 			}
 			if !ipc.Connected() {
 				if !ipc.Connect(discordAppID) {
-					fmt.Fprintln(os.Stderr, "[Discord] IPC connection failed — is Discord running?")
+					fmt.Fprintln(os.Stderr, "[Discord] IPC connection failed - is Discord running?")
 					return
 				}
 			}
@@ -168,7 +168,7 @@ func main() {
 				}
 				return
 			}
-			// Game exited — clear status immediately without waiting for the slow path.
+			// Game exited - clear status immediately without waiting for the slow path.
 			currentGame = nil
 			handleGameChange(nil)
 			return
@@ -177,7 +177,7 @@ func main() {
 		// Slow path: full /proc scan.
 		result := getRunningGame(appIDMap, shortcuts)
 		if result != nil && result.Name == "" {
-			// Unknown appID — reload maps and retry once.
+			// Unknown appID - reload maps and retry once.
 			appIDMap = buildAppIDMap(libraryPaths)
 			shortcuts = loadShortcuts()
 			result = getRunningGame(appIDMap, shortcuts)
