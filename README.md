@@ -13,7 +13,7 @@ Icons are sourced from the icon set in your Steam game properties first, then yo
 - Linux (tested on CachyOS/Arch, but _should_ work on most distros)
 - Steam (system package or Flatpak - auto-detected)
 - Discord (system package or Flatpak - auto-detected)
-- [Go](https://go.dev)
+- [Go](https://go.dev) (only required if building from source instead of using the release binary)
 
 ## Setup
 
@@ -26,6 +26,8 @@ cd steamd
 ```
 
 This compiles the binary, installs it to `~/.local/bin`, and sets up a systemd user service that starts automatically on login.
+
+The script will prompt you to either download the latest release binary from GitHub (default) or build from source via `go build`.
 
 If no config file is found at `~/.config/steamd/env`, the script will interactively prompt you to enter your credentials before starting the service. See below for info on how to obtain the required values.
 

@@ -7,13 +7,32 @@ ENV_FILE="$CONFIG_DIR/env"
 BIN_DIR="$HOME/.local/bin"
 SERVICE_DIR="$HOME/.config/systemd/user"
 SERVICE_FILE="$SERVICE_DIR/steamd.service"
+GITHUB_REPO="cdleveille/steamd"
+RELEASE_BINARY_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/steamd"
 
 cd "$SCRIPT_DIR"
 
-# ── 1. Compile binary ─────────────────────────────────────────────────────────
-echo "Compiling..."
+# ── 1. Obtain binary ──────────────────────────────────────────────────────────
 mkdir -p dist
-go build -C src -o "$SCRIPT_DIR/dist/steamd" .
+echo "How would you like to install the steamd binary?"
+echo "  1) Download the latest release binary from GitHub (default)"
+echo "  2) Build from source (Go must be installed)"
+read -r -p "Select an option [1]: " install_method
+install_method="${install_method:-1}"
+
+if [ "$install_method" = "2" ]; then
+    echo "Compiling from source..."
+    go build -C src -o "$SCRIPT_DIR/dist/steamd" .
+else
+    if ! command -v curl &>/dev/null; then
+        echo "Error: curl is required to download the release binary. Install curl, or re-run and choose to build from source." >&2
+        exit 1
+    fi
+
+    echo "Downloading latest release binary from $RELEASE_BINARY_URL..."
+    curl -fsSL "$RELEASE_BINARY_URL" -o "$SCRIPT_DIR/dist/steamd"
+    chmod +x "$SCRIPT_DIR/dist/steamd"
+fi
 
 # ── 2. Install binary ─────────────────────────────────────────────────────────
 echo "Installing binary to $BIN_DIR..."
